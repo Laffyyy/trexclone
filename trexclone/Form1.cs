@@ -7,11 +7,18 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Data.SqlClient;
+using static T_Rex_Endless_Runner_MOO_ICT.frmMainmenu;
+using MySql.Data.MySqlClient;
+
 
 namespace T_Rex_Endless_Runner_MOO_ICT
 {
     public partial class Form1 : Form
     {
+
+        
+
         bool jumping = false;
         int jumpSpeed;
         int force = 12;
@@ -28,6 +35,7 @@ namespace T_Rex_Endless_Runner_MOO_ICT
             InitializeComponent();
 
             GameReset();
+            
         }
 
         private void MainGameTimerEvent(object sender, EventArgs e)
@@ -78,6 +86,58 @@ namespace T_Rex_Endless_Runner_MOO_ICT
                         trex.Image = Properties.Resources.dead;
                         txtScore.Text += " Press R to restart the game!";
                         isGameOver = true;
+
+                        if (isGameOver)
+                        {
+                            ///query time
+                            MySqlConnection conn;
+                            conn = new MySqlConnection();
+                            conn.ConnectionString = "server=localhost;userid=root;password='root'; database=dinorun";
+
+                            try
+                            {
+                                conn.Open();
+
+
+                                // Check if the username already exists
+                                string selectQuery = "SELECT dScore FROM tbluserscore WHERE dUsername = @Username";
+                                MySqlCommand selectCommand = new MySqlCommand(selectQuery, conn);
+                                selectCommand.Parameters.AddWithValue("@Username", GlobalVariables.UserName);
+                                object existingScore = selectCommand.ExecuteScalar();
+
+                                if (existingScore != null)
+                                {
+                                    // Update the score if the username exists and new score is higher
+                                    int currentScore = Convert.ToInt32(existingScore);
+                                    int newScore = currentScore;
+                                    if (newScore > currentScore)
+                                    {
+                                        string updateQuery = "UPDATE tbluserscore SET dScore = @Score WHERE dUsername = @Username";
+                                        MySqlCommand updateCommand = new MySqlCommand(updateQuery, conn);
+                                        updateCommand.Parameters.AddWithValue("@Username", GlobalVariables.UserName);
+                                        updateCommand.Parameters.AddWithValue("@Score", newScore);
+                                        updateCommand.ExecuteNonQuery();
+                                    }
+                                }
+                                else
+                                {
+                                    // Insert a new row if the username doesn't exist
+                                    string insertQuery = "INSERT INTO tbluserscore (dUsername, dScore) VALUES (@Username, @Score)";
+                                    MySqlCommand insertCommand = new MySqlCommand(insertQuery, conn);
+                                    insertCommand.Parameters.AddWithValue("@Username", GlobalVariables.UserName);
+                                    insertCommand.Parameters.AddWithValue("@Score", score);
+                                    insertCommand.ExecuteNonQuery();
+                                }
+                            }
+
+                            catch (Exception ex)
+                            {
+                                MessageBox.Show(ex.Message);
+                                conn.Close();
+                            }
+
+
+                        }
                     }
                 }
             }
@@ -135,10 +195,19 @@ namespace T_Rex_Endless_Runner_MOO_ICT
                 }
             }
 
+
+            
+
+
             gameTimer.Start();
 
 
 
+
+        }
+
+        private void Form1_Load(object sender, EventArgs e)
+        {
 
         }
     }
